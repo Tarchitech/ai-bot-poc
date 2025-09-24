@@ -1,0 +1,100 @@
+{
+  "rules": [
+    {
+      "name": "security_check",
+      "description": "Check for potential security vulnerabilities",
+      "severity": "error",
+      "pattern": "^(?!\\s*#|\\s*//|\\s*/\\*|\\s*print|\\s*echo|\\s*console\\.log).*(?:password|secret|key|token|api_key|private_key)\\s*=\\s*['\"][^'\"]+['\"]",
+      "suggestion": "Consider using environment variables or secure storage for sensitive data"
+    },
+    {
+      "name": "hardcoded_values",
+      "description": "Check for hardcoded values that should be configurable",
+      "severity": "warning",
+      "pattern": "localhost|127\\.0\\.0\\.1|http://|https://[^\\s]+",
+      "suggestion": "Consider using configuration files or environment variables for URLs and addresses"
+    },
+    {
+      "name": "performance_check",
+      "description": "Check for potential performance issues",
+      "severity": "warning",
+      "pattern": "for.*in.*range\\(.*\\)|while.*True|sleep\\(|time\\.sleep|\\*\\*\\*|\\*\\*\\*\\*",
+      "suggestion": "Consider optimizing loops and avoiding blocking operations"
+    },
+    {
+      "name": "code_quality",
+      "description": "Check for code quality issues",
+      "severity": "info",
+      "pattern": "TODO|FIXME|XXX|HACK|BUG|TEMP",
+      "suggestion": "Consider addressing technical debt markers before merging"
+    },
+    {
+      "name": "error_handling",
+      "description": "Check for proper error handling",
+      "severity": "warning",
+      "pattern": "except.*:|try:|raise|throw",
+      "suggestion": "Ensure proper error handling and logging"
+    },
+    {
+      "name": "documentation",
+      "description": "Check for missing documentation",
+      "severity": "info",
+      "pattern": "def |class |function ",
+      "suggestion": "Consider adding docstrings for functions and classes"
+    },
+    {
+      "name": "logging",
+      "description": "Check for logging practices",
+      "severity": "info",
+      "pattern": "print\\(|console\\.log|System\\.out\\.print",
+      "suggestion": "Consider using proper logging instead of print statements"
+    },
+    {
+      "name": "database_security",
+      "description": "Check for SQL injection vulnerabilities",
+      "severity": "error",
+      "pattern": "SELECT.*\\+|INSERT.*\\+|UPDATE.*\\+|DELETE.*\\+|\\+.*SELECT|\\+.*INSERT|\\+.*UPDATE|\\+.*DELETE|f\".*\\{.*\\}.*SELECT|f\".*\\{.*\\}.*INSERT|f\".*\\{.*\\}.*UPDATE|f\".*\\{.*\\}.*DELETE",
+      "suggestion": "Use parameterized queries to prevent SQL injection"
+    },
+    {
+      "name": "input_validation",
+      "description": "Check for input validation",
+      "severity": "warning",
+      "pattern": "input\\(|raw_input\\(|request\\.|\\$_GET|\\$_POST",
+      "suggestion": "Validate and sanitize all user inputs"
+    },
+    {
+      "name": "memory_management",
+      "description": "Check for memory management issues",
+      "severity": "warning",
+      "pattern": "malloc|free|new |delete |new\\[|delete\\[",
+      "suggestion": "Ensure proper memory allocation and deallocation"
+    }
+  ],
+  "ai_settings": {
+    "model": "models/gemini-2.5-pro",
+    "temperature": 0.1,
+    "max_tokens": 2000
+  },
+  "review_settings": {
+    "max_files_per_review": 50,
+    "max_lines_per_file": 1000,
+    "skip_files": [
+      "*.min.js",
+      "*.min.css",
+      "package-lock.json",
+      "yarn.lock",
+      "*.lock"
+    ],
+    "focus_languages": [
+      "python",
+      "javascript",
+      "typescript",
+      "java",
+      "cpp",
+      "c",
+      "go",
+      "rust"
+    ]
+  }
+}

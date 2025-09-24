@@ -1,0 +1,19 @@
+# Core dependencies
+langchain>=0.1.0
+langchain-community>=0.0.20
+langchain-google-genai>=0.0.6
+requests>=2.31.0
+python-dotenv>=1.0.0
+
+# Optional: For PDF processing (if needed)
+pypdf>=3.17.0
+reportlab>=4.0.0
+
+# Optional: For enhanced text processing
+nltk>=3.8.1
+spacy>=3.7.0
+
+# Development dependencies
+pytest>=7.4.0
+black>=23.0.0
+flake8>=6.0.0
