@@ -1,0 +1,117 @@
+name: Local Review Check
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    types: [opened, synchronize]
+  workflow_dispatch:
+
+jobs:
+  check-local-review:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r .github/code-review/requirements.txt
+      
+      - name: Check for local review reports
+        run: |
+          echo "🔍 Checking for local review reports..."
+          
+          # Look for recent review reports
+          if ls code_review_*.md 1> /dev/null 2>&1; then
+            echo "✅ Found local review reports:"
+            ls -la code_review_*.md
+            echo ""
+            echo "📊 Latest review summary:"
+            latest_report=$(ls -t code_review_*.md | head -1)
+            echo "File: $latest_report"
+            head -20 "$latest_report"
+          else
+            echo "⚠️  No local review reports found"
+            echo "💡 Consider running local review before pushing:"
+            echo "   python .github/code-review/local_review.py main"
+          fi
+      
+      - name: Validate review quality
+        if: success()
+        run: |
+          echo "🎯 Validating review quality..."
+          
+          # Check if there are any critical issues in recent reports
+          if ls code_review_*.md 1> /dev/null 2>&1; then
+            latest_report=$(ls -t code_review_*.md | head -1)
+            
+            # Count critical issues
+            critical_count=$(grep -c "🚨 Critical Issues" "$latest_report" || echo "0")
+            warning_count=$(grep -c "⚠️" "$latest_report" || echo "0")
+            
+            echo "📊 Review Statistics:"
+            echo "  Critical Issues: $critical_count"
+            echo "  Warnings: $warning_count"
+            
+            if [ "$critical_count" -gt 0 ]; then
+              echo "❌ Critical issues found in local review!"
+              echo "Please address critical issues before pushing."
+              exit 1
+            elif [ "$warning_count" -gt 5 ]; then
+              echo "⚠️  Many warnings found in local review."
+              echo "Consider addressing warnings before pushing."
+            else
+              echo "✅ Local review looks good!"
+            fi
+          fi
+
+  suggest-local-review:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    steps:
+      - name: Suggest local review
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Check if this is a new PR
+            if (context.payload.action === 'opened') {
+              const comment = `
+              🤖 **AI Code Review Bot**
+              
+              Welcome! I'll automatically review your PR, but for the best experience, consider running a local review first:
+              
+              \`\`\`bash
+              # Install dependencies
+              pip install -r .github/code-review/requirements.txt
+              
+              # Run local review
+              python .github/code-review/local_review.py main
+              \`\`\`
+              
+              **Benefits of local review:**
+              - ✅ Catch issues before pushing
+              - ✅ Faster feedback loop
+              - ✅ More detailed analysis
+              - ✅ Offline capability
+              
+              I'll also provide an automated review shortly! 🚀
+              `;
+              
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: comment
+              });
+            }
