@@ -32,8 +32,8 @@
       "name": "error_handling",
       "description": "Check for proper error handling",
       "severity": "warning",
-      "pattern": "except.*:|try:|raise|throw",
-      "suggestion": "Ensure proper error handling and logging"
+      "pattern": "except\\s+Exception\\s+as\\s+\\w+:|except\\s+Exception:|except\\s+Exception\\s*:|except\\s*:\\s*$|except\\s*:\\s*pass|except\\s*:\\s*#|raise\\s+$|throw\\s+$",
+      "suggestion": "Use specific exception types instead of broad Exception catching"
     },
     {
       "name": "documentation",
@@ -60,15 +60,154 @@
       "name": "input_validation",
       "description": "Check for input validation",
       "severity": "warning",
-      "pattern": "input\\(|raw_input\\(|request\\.|\\$_GET|\\$_POST",
+      "pattern": "^(?!.*def).*input\\([^)]*\\)(?!.*validate|.*check|.*sanitize)|^(?!.*def).*raw_input\\([^)]*\\)(?!.*validate|.*check|.*sanitize)|request\\.(get|post|args|form)(?!.*validate|.*check|.*sanitize)",
       "suggestion": "Validate and sanitize all user inputs"
     },
     {
       "name": "memory_management",
       "description": "Check for memory management issues",
-      "severity": "warning",
-      "pattern": "malloc|free|new |delete |new\\[|delete\\[",
+      "severity": "info",
+      "pattern": "malloc\\(|free\\(|new\\s+\\w+|delete\\s+\\w+|new\\[|delete\\[",
       "suggestion": "Ensure proper memory allocation and deallocation"
+    },
+    {
+      "name": "ai_security_analysis",
+      "description": "AI-powered security vulnerability analysis",
+      "severity": "error",
+      "type": "ai_analysis",
+      "prompt": "Analyze this code for security vulnerabilities. Look for: hardcoded secrets, SQL injection, unsafe deserialization, shell injection, authentication bypass, authorization issues, and other security vulnerabilities. Provide specific line numbers and detailed explanations.",
+      "suggestion": "Address security vulnerabilities found by AI analysis"
+    },
+    {
+      "name": "ai_code_quality",
+      "description": "AI-powered code quality analysis",
+      "severity": "warning",
+      "type": "ai_analysis",
+      "prompt": "Analyze this code for quality issues. Look for: code smells, anti-patterns, maintainability issues, performance problems, complexity issues, and best practice violations. Focus on SOLID principles, DRY principle, and clean code practices.",
+      "suggestion": "Improve code quality based on AI analysis"
+    },
+    {
+      "name": "ai_test_coverage",
+      "description": "AI-powered test coverage analysis",
+      "severity": "info",
+      "type": "ai_analysis",
+      "prompt": "Analyze this code and determine if it has adequate test coverage. Check for: unit tests, integration tests, edge cases, error handling tests, and test quality. Identify missing test scenarios and suggest improvements.",
+      "suggestion": "Improve test coverage based on AI analysis"
+    },
+    {
+      "name": "ai_documentation",
+      "description": "AI-powered documentation analysis",
+      "severity": "info",
+      "type": "ai_analysis",
+      "prompt": "Analyze this code for documentation quality. Check for: missing docstrings, unclear function names, complex logic without comments, API documentation, and code readability. Suggest improvements for better documentation.",
+      "suggestion": "Improve documentation based on AI analysis"
+    },
+    {
+      "name": "ai_performance",
+      "description": "AI-powered performance analysis",
+      "severity": "warning",
+      "type": "ai_analysis",
+      "prompt": "Analyze this code for performance issues. Look for: inefficient algorithms, unnecessary loops, memory leaks, blocking operations, database query optimization, and scalability concerns. Provide specific recommendations.",
+      "suggestion": "Optimize performance based on AI analysis"
+    },
+    {
+      "name": "ai_architecture",
+      "description": "AI-powered architecture analysis",
+      "severity": "warning",
+      "type": "ai_analysis",
+      "prompt": "Analyze this code for architectural issues. Check for: design patterns, separation of concerns, dependency management, coupling, cohesion, and architectural best practices. Suggest architectural improvements.",
+      "suggestion": "Improve architecture based on AI analysis"
+    },
+    {
+      "name": "sql_injection",
+      "description": "Check for SQL injection vulnerabilities",
+      "severity": "error",
+      "pattern": "f\".*\\{.*\\}.*(?:SELECT|INSERT|UPDATE|DELETE)|\\+.*(?:SELECT|INSERT|UPDATE|DELETE)|execute\\(.*\\+.*\\)|cursor\\.execute\\(.*\\+.*\\)",
+      "suggestion": "Use parameterized queries or prepared statements to prevent SQL injection"
+    },
+    {
+      "name": "hardcoded_credentials",
+      "description": "Check for hardcoded email credentials and passwords",
+      "severity": "error",
+      "pattern": "(?:email_user|email_pass|smtp_user|smtp_pass|mail_user|mail_pass)\\s*=\\s*['\"][^'\"]+['\"]",
+      "suggestion": "Use environment variables or secure credential storage for email credentials"
+    },
+    {
+      "name": "function_responsibility",
+      "description": "Check for functions with too many responsibilities",
+      "severity": "warning",
+      "pattern": "def\\s+\\w+.*validate.*save.*send.*log|def\\s+\\w+.*process.*data.*validate.*save.*send",
+      "suggestion": "Consider breaking down functions with multiple responsibilities into smaller, focused functions"
+    },
+    {
+      "name": "complex_conditionals",
+      "description": "Check for overly complex conditional logic",
+      "severity": "warning",
+      "pattern": "if.*and.*and.*and|if.*or.*or.*or|if.*==.*and.*==.*and.*==|if.*get\\(.*\\)\\s*and.*get\\(.*\\)\\s*and.*get\\(.*\\)",
+      "suggestion": "Consider simplifying complex conditional logic or extracting to separate functions"
+    },
+    {
+      "name": "global_variables",
+      "description": "Check for global variable usage",
+      "severity": "warning",
+      "pattern": "global\\s+\\w+|GLOBAL_\\w+\\s*=",
+      "suggestion": "Avoid global variables; consider using dependency injection or class-based design"
+    },
+    {
+      "name": "duplicate_code",
+      "description": "Check for duplicate code patterns",
+      "severity": "warning",
+      "pattern": "def\\s+\\w+.*return\\s+f\"\\{.*\\['\\w+']\\}\\s*\\{.*\\['\\w+']\\}\"",
+      "suggestion": "Extract common functionality to avoid code duplication"
+    },
+    {
+      "name": "too_many_parameters",
+      "description": "Check for functions with too many parameters",
+      "severity": "warning",
+      "pattern": "def\\s+\\w+\\([^)]*,[^)]*,[^)]*,[^)]*,[^)]*,[^)]*,[^)]*,[^)]*,[^)]*,[^)]*",
+      "suggestion": "Consider using data structures or builder pattern for functions with many parameters"
+    },
+    {
+      "name": "insecure_hash",
+      "description": "Check for insecure hash algorithms",
+      "severity": "warning",
+      "pattern": "hashlib\\.md5|hashlib\\.sha1|MD5|SHA1",
+      "suggestion": "Use secure hash algorithms like SHA-256 or bcrypt for password hashing"
+    },
+    {
+      "name": "nested_conditions",
+      "description": "Check for deeply nested conditional statements",
+      "severity": "warning",
+      "pattern": "if.*:\\s*\\n\\s*if.*:\\s*\\n\\s*if.*:\\s*\\n\\s*if.*:|if.*and.*if.*and.*if.*and.*if",
+      "suggestion": "Consider using early returns or guard clauses to reduce nesting"
+    },
+    {
+      "name": "sql_injection",
+      "description": "Check for SQL injection vulnerabilities",
+      "severity": "error",
+      "pattern": "f\"[^\"]*INSERT[^\"]*\\{.*\\}|f\"[^\"]*SELECT[^\"]*\\{.*\\}|f\"[^\"]*UPDATE[^\"]*\\{.*\\}|f\"[^\"]*DELETE[^\"]*\\{.*\\}",
+      "suggestion": "Use parameterized queries to prevent SQL injection attacks"
+    },
+    {
+      "name": "division_by_zero",
+      "description": "Check for potential division by zero errors",
+      "severity": "warning",
+      "pattern": "\\d+\\s*/\\s*0|\\w+\\s*/\\s*0|/\\s*0",
+      "suggestion": "Add proper validation to prevent division by zero errors"
+    },
+    {
+      "name": "file_operations",
+      "description": "Check for file operations without proper error handling",
+      "severity": "warning",
+      "pattern": "with\\s+open\\s*\\([^)]*\\)\\s+as\\s+\\w+:|open\\s*\\([^)]*\\)(?!.*try|.*except)",
+      "suggestion": "Add proper error handling for file operations"
+    },
+    {
+      "name": "unused_imports",
+      "description": "Check for unused imports",
+      "severity": "warning",
+      "pattern": "import\\s+unused_|import\\s+another_unused",
+      "suggestion": "Remove unused imports to clean up the code"
     }
   ],
   "ai_settings": {

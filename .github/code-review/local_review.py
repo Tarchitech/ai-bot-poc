@@ -418,37 +418,181 @@ Format your response as:
         # Apply each rule
         for rule in rules:
             rule_name = rule['name']
-            pattern = rule['pattern']
             severity = rule['severity']
             description = rule['description']
             suggestion = rule['suggestion']
+            rule_type = rule.get('type', 'regex')
             
             import re
             rule_issues = []
             
-            # Check individual files for detailed information
-            for file_path, content in file_contents.items():
-                lines = content.split('\n')
-                for line_num, line in enumerate(lines, 1):
-                    if re.search(pattern, line, re.IGNORECASE):
-                        # Extract the matching part
-                        match = re.search(pattern, line, re.IGNORECASE)
-                        matched_text = match.group(0) if match else line.strip()
-                        
-                        rule_issues.append({
-                            'file': file_path,
-                            'line': line_num,
-                            'code': line.strip(),
-                            'matched_text': matched_text,
-                            'rule': rule_name,
-                            'severity': severity,
-                            'description': description,
-                            'suggestion': suggestion
-                        })
+            if rule_type == 'regex':
+                # Traditional regex-based rules
+                pattern = rule['pattern']
+                for file_path, content in file_contents.items():
+                    lines = content.split('\n')
+                    for line_num, line in enumerate(lines, 1):
+                        if re.search(pattern, line, re.IGNORECASE):
+                            # Extract the matching part
+                            match = re.search(pattern, line, re.IGNORECASE)
+                            matched_text = match.group(0) if match else line.strip()
+                            
+                            rule_issues.append({
+                                'file': file_path,
+                                'line': line_num,
+                                'code': line.strip(),
+                                'matched_text': matched_text,
+                                'rule': rule_name,
+                                'severity': severity,
+                                'description': description,
+                                'suggestion': suggestion
+                            })
+            
+            elif rule_type == 'ai_analysis':
+                # AI-powered analysis rules
+                ai_prompt = rule.get('prompt', '')
+                if ai_prompt:
+                    # Analyze each file with AI
+                    for file_path, content in file_contents.items():
+                        ai_issues = self._apply_ai_analysis(file_path, content, ai_prompt, rule_name, severity, suggestion)
+                        rule_issues.extend(ai_issues)
             
             # Add rule summary if any issues found
             if rule_issues:
                 issues.extend(rule_issues)
+        
+        return issues
+    
+    def _apply_ai_analysis(self, file_path: str, content: str, prompt: str, rule_name: str, severity: str, suggestion: str) -> List[dict]:
+        """Apply AI analysis to a single file"""
+        try:
+            # Prepare the AI prompt
+            full_prompt = f"""
+{prompt}
+
+File: {file_path}
+Code:
+```python
+{content}
+```
+
+Please analyze this code and provide specific issues found. For each issue, provide:
+1. Line number
+2. Specific code snippet
+3. Detailed description of the problem
+4. Suggested fix
+
+Format your response as a structured list of issues.
+"""
+            
+            # Generate AI analysis
+            ai_response = self._generate_ai_analysis(full_prompt)
+            
+            # Parse AI response and convert to issues
+            issues = self._parse_ai_response(ai_response, file_path, rule_name, severity, suggestion)
+            return issues
+            
+        except Exception as e:
+            print(f"Error in AI analysis for {file_path}: {e}")
+            return []
+    
+    def _generate_ai_analysis(self, prompt: str) -> str:
+        """Generate AI analysis using the configured model"""
+        try:
+            import google.generativeai as genai
+            # Configure the model
+            genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
+            model = genai.GenerativeModel(self.config.get('ai_settings', {}).get('model', 'models/gemini-2.5-pro'))
+            
+            # Generate response
+            response = model.generate_content(
+                prompt,
+                generation_config=genai.types.GenerationConfig(
+                    temperature=self.config.get('ai_settings', {}).get('temperature', 0.1),
+                    max_output_tokens=self.config.get('ai_settings', {}).get('max_tokens', 2000)
+                )
+            )
+            
+            return response.text if response.text else ""
+            
+        except Exception as e:
+            return f"Error generating AI analysis: {e}"
+    
+    def _parse_ai_response(self, ai_response: str, file_path: str, rule_name: str, severity: str, suggestion: str) -> List[dict]:
+        """Parse AI response and extract structured issues"""
+        import re
+        issues = []
+        
+        try:
+            lines = ai_response.split('\n')
+            current_issue = {}
+            
+            for line in lines:
+                line = line.strip()
+                
+                # Look for line number patterns
+                if re.match(r'^\d+\.?\s*Line\s*(\d+):', line, re.IGNORECASE):
+                    if current_issue:
+                        issues.append(current_issue)
+                    current_issue = {
+                        'file': file_path,
+                        'line': 1,  # Default line
+                        'code': '',
+                        'matched_text': '',
+                        'rule': rule_name,
+                        'severity': severity,
+                        'description': '',
+                        'suggestion': suggestion
+                    }
+                    
+                    # Extract line number
+                    match = re.search(r'(\d+)', line)
+                    if match:
+                        current_issue['line'] = int(match.group(1))
+                
+                # Look for code snippets
+                elif line.startswith('```') or line.startswith('`'):
+                    if current_issue:
+                        current_issue['code'] = line.strip('`')
+                        current_issue['matched_text'] = line.strip('`')
+                
+                # Look for descriptions
+                elif line and not line.startswith('-') and not line.startswith('*'):
+                    if current_issue and not current_issue['description']:
+                        current_issue['description'] = line
+                    elif current_issue and current_issue['description']:
+                        current_issue['description'] += f" {line}"
+            
+            # Add the last issue if exists
+            if current_issue:
+                issues.append(current_issue)
+            
+            # If no structured issues found, create a general issue
+            if not issues and ai_response and not ai_response.startswith("Error"):
+                issues.append({
+                    'file': file_path,
+                    'line': 1,
+                    'code': 'AI Analysis Result',
+                    'matched_text': ai_response[:100] + '...' if len(ai_response) > 100 else ai_response,
+                    'rule': rule_name,
+                    'severity': severity,
+                    'description': f"AI Analysis: {ai_response[:200]}...",
+                    'suggestion': suggestion
+                })
+            
+        except Exception as e:
+            print(f"Error parsing AI response: {e}")
+            # Fallback: create a general issue
+            issues.append({
+                'file': file_path,
+                'line': 1,
+                'code': 'AI Analysis',
+                'matched_text': ai_response[:100] if ai_response else 'No response',
+                'rule': rule_name,
+                'severity': severity,
+                'description': f"AI Analysis completed: {ai_response[:200] if ai_response else 'No issues found'}",
+                'suggestion': suggestion
+            })
         
         return issues
     
@@ -485,7 +629,7 @@ Format your response as:
         if warning_issues:
             detailed_text.append("### ⚠️ Warnings")
             detailed_text.append("")
-            for issue in warning_issues[:10]:  # Limit to first 10 for readability
+            for issue in warning_issues:  # Limit to first 20 for readability
                 issue_text = f"**File**: `{issue['file']}`<br>\n**Line**: {issue['line']}<br>\n**Issue**: {issue['description']}<br>\n**Code**: `{issue['code']}`<br>\n**Suggestion**: {issue['suggestion']}"
                 detailed_text.append(issue_text)
                 detailed_text.append("")  # Empty line separator between issues
@@ -493,26 +637,25 @@ Format your response as:
         if info_issues:
             detailed_text.append("### ℹ️ Information")
             detailed_text.append("")
-            for issue in info_issues[:10]:  # Limit to first 10 for readability
+            for issue in info_issues[:20]:  # Limit to first 20 for readability
                 issue_text = f"**File**: `{issue['file']}`<br>\n**Line**: {issue['line']}<br>\n**Issue**: {issue['description']}<br>\n**Code**: `{issue['code']}`<br>\n**Suggestion**: {issue['suggestion']}"
                 detailed_text.append(issue_text)
                 detailed_text.append("")  # Empty line separator between issues
         
         # Add summary
         total_issues = len(rule_issues)
-        displayed_warning = min(len(warning_issues), 10)
-        displayed_info = min(len(info_issues), 10)
+        displayed_info = min(len(info_issues), 20)
         
         detailed_text.append("### 📊 Summary")
         detailed_text.append(f"- **Total Issues Found**: {total_issues}")
         detailed_text.append(f"- **Critical Issues**: {len(critical_issues)} (showing all)")
-        detailed_text.append(f"- **Warning Issues**: {len(warning_issues)} (showing {displayed_warning})")
+        detailed_text.append(f"- **Warning Issues**: {len(warning_issues)} (showing all)")
         detailed_text.append(f"- **Info Issues**: {len(info_issues)} (showing {displayed_info})")
         
         # Add note about truncation if there are more issues
-        if len(warning_issues) > 10 or len(info_issues) > 10:
+        if len(info_issues) > 20:
             detailed_text.append("")
-            detailed_text.append("> **Note**: All critical issues are shown. Warning and info issues are limited to 10 for readability.")
+            detailed_text.append("> **Note**: All critical and warn issues are shown. Info issues are limited to 20 for readability.")
         
         return "\n".join(detailed_text)
     
